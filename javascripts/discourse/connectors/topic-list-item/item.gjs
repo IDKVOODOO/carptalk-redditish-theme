@@ -288,7 +288,7 @@ export default class Item extends Component {
             {{icon (if this.topicLiked "d-liked" "d-unliked")}}
 
             <span>
-              {{if this.topicLiked "Liked" "Like"}}
+              {{if this.topicLiked "Liked" "Like this post"}}
             </span>
           </button>
         {{/if}}
