@@ -46,6 +46,21 @@ export default class Item extends Component {
     return Number(this.args.outletArgs.topic.like_count || 0);
   }
 
+  get showLikeButton() {
+    const topicOwner =
+      this.args.outletArgs.topic.posters?.[0]?.user;
+
+    if (!this.currentUser || !topicOwner) {
+      return false;
+    }
+
+    if (topicOwner.id && this.currentUser.id) {
+      return this.currentUser.id !== topicOwner.id;
+    }
+
+    return this.currentUser.username !== topicOwner.username;
+  }
+
   @action
   onTitleFocus(event) {
     event.target.closest(".topic-list-item").classList.add("selected");
@@ -272,7 +287,7 @@ export default class Item extends Component {
           {{i18n "post.quote_share"}}
         </span>
 
-        {{#if this.currentUser}}
+        {{#if this.showLikeButton}}
           <button
             type="button"
             class="card-like-button {{if this.topicLiked 'is-liked'}}"
