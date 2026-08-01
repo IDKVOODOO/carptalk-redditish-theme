@@ -42,6 +42,12 @@ export default class Item extends Component {
     if (this.localLikeCount !== null) {
       return this.localLikeCount;
     }
+get isTopicOwner() {
+  return (
+    this.currentUser?.username ===
+    this.args.outletArgs.topic.posters?.[0]?.user?.username
+  );
+}
 
     return Number(this.args.outletArgs.topic.like_count || 0);
   }
@@ -272,7 +278,7 @@ export default class Item extends Component {
           {{i18n "post.quote_share"}}
         </span>
 
-        {{#if this.currentUser}}
+        {{#if (and this.currentUser (not this.isTopicOwner))}}
           <button
             type="button"
             class="card-like-button {{if this.topicLiked 'is-liked'}}"
