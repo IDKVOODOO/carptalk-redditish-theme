@@ -42,12 +42,6 @@ export default class Item extends Component {
     if (this.localLikeCount !== null) {
       return this.localLikeCount;
     }
-get isTopicOwner() {
-  return (
-    this.currentUser?.username ===
-    this.args.outletArgs.topic.posters?.[0]?.user?.username
-  );
-}
 
     return Number(this.args.outletArgs.topic.like_count || 0);
   }
