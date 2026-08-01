@@ -278,7 +278,7 @@ get isTopicOwner() {
           {{i18n "post.quote_share"}}
         </span>
 
-        {{#if (and this.currentUser (not this.isTopicOwner))}}
+        {{#if this.currentUser}}
           <button
             type="button"
             class="card-like-button {{if this.topicLiked 'is-liked'}}"
