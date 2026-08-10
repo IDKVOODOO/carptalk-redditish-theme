@@ -71,24 +71,42 @@ export default class Item extends Component {
     event.target.closest(".topic-list-item").classList.remove("selected");
   }
 
-  @action
-  openTopic(event) {
-    if (
-      event.target.closest(".card-like-button") ||
-      (event.target.nodeName === "A" && !event.target.closest(".raw-link")) ||
-      event.target.closest(".badge-wrapper")
-    ) {
-      return;
-    }
-
-    const { navigateToTopic, topic } = this.args.outletArgs;
-
-    if (wantsNewWindow(event)) {
-      window.open(topic.lastUnreadUrl, "_blank");
-    } else {
-      navigateToTopic(topic, topic.lastUnreadUrl);
-    }
+@action
+openTopic(event) {
+  // Keep your Like button and other interactive links working normally
+  if (
+    event.target.closest(".card-like-button") ||
+    (event.target.nodeName === "A" && !event.target.closest(".raw-link")) ||
+    event.target.closest(".badge-wrapper") ||
+    event.target.closest(".topic-preview-modal__trigger-wrapper")
+  ) {
+    return;
   }
+
+  const { navigateToTopic, topic } = this.args.outletArgs;
+
+  // Cmd/Ctrl click still opens the real topic in a new tab
+  if (wantsNewWindow(event)) {
+    window.open(topic.lastUnreadUrl, "_blank");
+    return;
+  }
+
+  // Find the working Topic Preview button rendered into this card
+  const previewButton = event.currentTarget.querySelector(
+    ".topic-preview-modal__trigger-wrapper--button"
+  );
+
+  if (previewButton) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    previewButton.click();
+    return;
+  }
+
+  // Fall back to normal Reddit-ish topic navigation
+  navigateToTopic(topic, topic.lastUnreadUrl);
+}
 
   @action
   share(event) {
