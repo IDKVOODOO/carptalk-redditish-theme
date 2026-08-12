@@ -3,6 +3,7 @@ import { tracked } from "@glimmer/tracking";
 import { get } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
+import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { service } from "@ember/service";
 
 import ShareTopicModal from "discourse/components/modal/share-topic";
@@ -47,8 +48,7 @@ export default class Item extends Component {
   }
 
   get showLikeButton() {
-    const topicOwner =
-      this.args.outletArgs.topic.posters?.[0]?.user;
+    const topicOwner = this.args.outletArgs.topic.posters?.[0]?.user;
 
     if (!this.currentUser || !topicOwner) {
       return false;
@@ -71,42 +71,42 @@ export default class Item extends Component {
     event.target.closest(".topic-list-item").classList.remove("selected");
   }
 
-@action
-openTopic(event) {
-  // Keep your Like button and other interactive links working normally
-  if (
-    event.target.closest(".card-like-button") ||
-    (event.target.nodeName === "A" && !event.target.closest(".raw-link")) ||
-    event.target.closest(".badge-wrapper") ||
-    event.target.closest(".topic-preview-modal__trigger-wrapper")
-  ) {
-    return;
+  @action
+  openTopic(event) {
+    // Keep the Like button and other interactive links working normally
+    if (
+      event.target.closest(".card-like-button") ||
+      (event.target.nodeName === "A" && !event.target.closest(".raw-link")) ||
+      event.target.closest(".badge-wrapper") ||
+      event.target.closest(".topic-preview-modal__trigger-wrapper")
+    ) {
+      return;
+    }
+
+    const { navigateToTopic, topic } = this.args.outletArgs;
+
+    // Cmd/Ctrl click still opens the real topic in a new tab
+    if (wantsNewWindow(event)) {
+      window.open(topic.lastUnreadUrl, "_blank");
+      return;
+    }
+
+    // Find the working Topic Preview button rendered into this card
+    const previewButton = event.currentTarget.querySelector(
+      ".topic-preview-modal__trigger-wrapper--button"
+    );
+
+    if (previewButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      previewButton.click();
+      return;
+    }
+
+    // Fall back to normal Reddit-ish topic navigation
+    navigateToTopic(topic, topic.lastUnreadUrl);
   }
-
-  const { navigateToTopic, topic } = this.args.outletArgs;
-
-  // Cmd/Ctrl click still opens the real topic in a new tab
-  if (wantsNewWindow(event)) {
-    window.open(topic.lastUnreadUrl, "_blank");
-    return;
-  }
-
-  // Find the working Topic Preview button rendered into this card
-  const previewButton = event.currentTarget.querySelector(
-    ".topic-preview-modal__trigger-wrapper--button"
-  );
-
-  if (previewButton) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    previewButton.click();
-    return;
-  }
-
-  // Fall back to normal Reddit-ish topic navigation
-  navigateToTopic(topic, topic.lastUnreadUrl);
-}
 
   @action
   share(event) {
@@ -139,10 +139,30 @@ openTopic(event) {
 
     this.firstPostId = firstPost.id;
     this.topicLiked = Boolean(likeAction?.acted);
+
     this.localLikeCount = Number(
       firstPost.like_count ?? topic.like_count ?? 0
     );
+
     this.likeStateLoaded = true;
+  }
+
+  @action
+  async loadInitialLikeState() {
+    if (
+      !this.currentUser ||
+      !this.showLikeButton ||
+      this.likeStateLoaded
+    ) {
+      return;
+    }
+
+    try {
+      await this.loadLikeState();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Unable to load initial topic like state", error);
+    }
   }
 
   @action
@@ -168,7 +188,10 @@ openTopic(event) {
         });
 
         this.topicLiked = false;
-        this.localLikeCount = Math.max(0, this.displayedLikeCount - 1);
+        this.localLikeCount = Math.max(
+          0,
+          this.displayedLikeCount - 1
+        );
       } else {
         await ajax("/post_actions.json", {
           type: "POST",
@@ -193,7 +216,12 @@ openTopic(event) {
 
   <template>
     {{! template-lint-disable no-invalid-interactive }}
-    <div {{on "click" this.openTopic}} class="custom-topic-layout">
+
+    <div
+      {{didInsert this.loadInitialLikeState}}
+      {{on "click" this.openTopic}}
+      class="custom-topic-layout"
+    >
       <div class="custom-topic-layout_meta">
         {{#unless @outletArgs.hideCategory}}
           {{#unless @outletArgs.topic.isPinnedUncategorized}}
@@ -214,8 +242,14 @@ openTopic(event) {
           </span>
 
           <a
-            data-user-card={{get @outletArgs "topic.posters.0.user.username"}}
-            href="/u/{{get @outletArgs 'topic.posters.0.user.username'}}"
+            data-user-card={{get
+              @outletArgs
+              "topic.posters.0.user.username"
+            }}
+            href="/u/{{get
+              @outletArgs
+              'topic.posters.0.user.username'
+            }}"
           >
             @{{get @outletArgs "topic.posters.0.user.username"}}
           </a>
@@ -300,6 +334,7 @@ openTopic(event) {
         </span>
 
         {{! template-lint-disable no-invalid-interactive }}
+
         <span {{on "click" this.share}} class="share-toggle">
           {{icon "link"}}
           {{i18n "post.quote_share"}}
