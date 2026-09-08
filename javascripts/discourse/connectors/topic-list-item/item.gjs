@@ -302,6 +302,10 @@ export default class Item extends Component {
         }}
       </div>
 
+      <div class="custom-topic-layout_excerpt">
+        <TopicExcerpt @topic={{@outletArgs.topic}} />
+      </div>
+
       {{#if @outletArgs.topic.thumbnails}}
         <div class="custom-topic-layout_image">
           <img
@@ -311,10 +315,6 @@ export default class Item extends Component {
           />
         </div>
       {{/if}}
-
-<div class="custom-topic-layout_excerpt">
-  <TopicExcerpt @topic={{@outletArgs.topic}} />
-</div>
 
       <div class="custom-topic-layout_bottom-bar">
         {{#if settings.show_like_count}}
