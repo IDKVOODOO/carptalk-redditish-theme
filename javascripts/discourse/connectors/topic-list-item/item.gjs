@@ -312,11 +312,9 @@ export default class Item extends Component {
         </div>
       {{/if}}
 
-      {{#unless @outletArgs.topic.thumbnails}}
-        <div class="custom-topic-layout_excerpt">
-          <TopicExcerpt @topic={{@outletArgs.topic}} />
-        </div>
-      {{/unless}}
+<div class="custom-topic-layout_excerpt">
+  <TopicExcerpt @topic={{@outletArgs.topic}} />
+</div>
 
       <div class="custom-topic-layout_bottom-bar">
         {{#if settings.show_like_count}}
