@@ -1,9 +1,7 @@
 import Component from "@glimmer/component";
-import { tracked } from "@glimmer/tracking";
 import { get } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
-import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { service } from "@ember/service";
 
 import ShareTopicModal from "discourse/components/modal/share-topic";
@@ -19,7 +17,6 @@ import discourseTags from "discourse/helpers/discourse-tags";
 import formatDate from "discourse/helpers/format-date";
 import lazyHash from "discourse/helpers/lazy-hash";
 import topicFeaturedLink from "discourse/helpers/topic-featured-link";
-import { ajax } from "discourse/lib/ajax";
 import { wantsNewWindow } from "discourse/lib/intercept-click";
 import { i18n } from "discourse-i18n";
 
@@ -27,32 +24,11 @@ export default class Item extends Component {
   @service currentUser;
   @service modal;
 
-  @tracked likeLoading = false;
-  @tracked likeStateLoaded = false;
-  @tracked topicLiked = false;
-  @tracked firstPostId = null;
-  @tracked localLikeCount = null;
-
   get newDotText() {
     return this.currentUser?.trust_level > 0
       ? ""
       : i18n("filters.new.lower_title");
   }
-
-  get displayedLikeCount() {
-    if (this.localLikeCount !== null) {
-      return this.localLikeCount;
-    }
-
-    return Number(this.args.outletArgs.topic.like_count || 0);
-  }
-
-  get showLikeButton() {
-    const topicOwner = this.args.outletArgs.topic.posters?.[0]?.user;
-
-    if (!this.currentUser || !topicOwner) {
-      return false;
-    }
 
     if (topicOwner.id && this.currentUser.id) {
       return this.currentUser.id !== topicOwner.id;
@@ -73,9 +49,7 @@ export default class Item extends Component {
 
   @action
   openTopic(event) {
-    // Keep the Like button and other interactive links working normally
     if (
-      event.target.closest(".card-like-button") ||
       (event.target.nodeName === "A" && !event.target.closest(".raw-link")) ||
       event.target.closest(".badge-wrapper") ||
       event.target.closest(".topic-preview-modal__trigger-wrapper")
@@ -116,63 +90,6 @@ export default class Item extends Component {
       model: { topic: this.args.outletArgs.topic },
     });
   }
-
-  async loadLikeState() {
-    if (this.likeStateLoaded) {
-      return;
-    }
-
-    const topic = this.args.outletArgs.topic;
-    const response = await ajax(`/t/${topic.id}.json`);
-
-    const firstPost = response.post_stream?.posts?.find(
-      (post) => post.post_number === 1
-    );
-
-    if (!firstPost) {
-      throw new Error("Unable to find the first post");
-    }
-
-    const likeAction = firstPost.actions_summary?.find(
-      (actionSummary) => actionSummary.id === 2
-    );
-
-    this.firstPostId = firstPost.id;
-    this.topicLiked = Boolean(likeAction?.acted);
-
-    this.localLikeCount = Number(
-      firstPost.like_count ?? topic.like_count ?? 0
-    );
-
-    this.likeStateLoaded = true;
-  }
-
-  @action
-  async loadInitialLikeState() {
-    if (
-      !this.currentUser ||
-      !this.showLikeButton ||
-      this.likeStateLoaded
-    ) {
-      return;
-    }
-
-    try {
-      await this.loadLikeState();
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("Unable to load initial topic like state", error);
-    }
-  }
-
-  @action
-  async toggleTopicLike(event) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (!this.currentUser || this.likeLoading) {
-      return;
-    }
 
     this.likeLoading = true;
 
@@ -218,7 +135,6 @@ export default class Item extends Component {
     {{! template-lint-disable no-invalid-interactive }}
 
     <div
-      {{didInsert this.loadInitialLikeState}}
       {{on "click" this.openTopic}}
       class="custom-topic-layout"
     >
@@ -320,7 +236,7 @@ export default class Item extends Component {
         {{#if settings.show_like_count}}
           <span class="like-count">
             {{icon "heart"}}
-            {{this.displayedLikeCount}}
+            {{@outletArgs.topic.like_count}}
             {{i18n "likes"}}
           </span>
         {{/if}}
@@ -337,27 +253,6 @@ export default class Item extends Component {
           {{icon "link"}}
           {{i18n "post.quote_share"}}
         </span>
-
-        {{#if this.showLikeButton}}
-          <button
-            type="button"
-            class="card-like-button {{if this.topicLiked 'is-liked'}}"
-            disabled={{this.likeLoading}}
-            aria-label={{if
-              this.topicLiked
-              "Unlike this topic"
-              "Like this topic"
-            }}
-            title={{if this.topicLiked "Unlike" "Like"}}
-            {{on "click" this.toggleTopicLike}}
-          >
-            {{icon (if this.topicLiked "d-liked" "d-unliked")}}
-
-            <span>
-              {{if this.topicLiked "Liked" "Like this post"}}
-            </span>
-          </button>
-        {{/if}}
       </div>
     </div>
   </template>
