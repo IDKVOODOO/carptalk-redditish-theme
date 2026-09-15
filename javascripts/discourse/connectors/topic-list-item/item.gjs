@@ -3,7 +3,6 @@ import { get } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
-
 import ShareTopicModal from "discourse/components/modal/share-topic";
 import PluginOutlet from "discourse/components/plugin-outlet";
 import TopicExcerpt from "discourse/components/topic-list/topic-excerpt";
@@ -30,13 +29,6 @@ export default class Item extends Component {
       : i18n("filters.new.lower_title");
   }
 
-    if (topicOwner.id && this.currentUser.id) {
-      return this.currentUser.id !== topicOwner.id;
-    }
-
-    return this.currentUser.username !== topicOwner.username;
-  }
-
   @action
   onTitleFocus(event) {
     event.target.closest(".topic-list-item").classList.add("selected");
@@ -51,93 +43,31 @@ export default class Item extends Component {
   openTopic(event) {
     if (
       (event.target.nodeName === "A" && !event.target.closest(".raw-link")) ||
-      event.target.closest(".badge-wrapper") ||
-      event.target.closest(".topic-preview-modal__trigger-wrapper")
+      event.target.closest(".badge-wrapper")
     ) {
       return;
     }
 
     const { navigateToTopic, topic } = this.args.outletArgs;
 
-    // Cmd/Ctrl click still opens the real topic in a new tab
     if (wantsNewWindow(event)) {
       window.open(topic.lastUnreadUrl, "_blank");
-      return;
+    } else {
+      navigateToTopic(topic, topic.lastUnreadUrl);
     }
-
-    // Find the working Topic Preview button rendered into this card
-    const previewButton = event.currentTarget.querySelector(
-      ".topic-preview-modal__trigger-wrapper--button"
-    );
-
-    if (previewButton) {
-      event.preventDefault();
-      event.stopPropagation();
-
-      previewButton.click();
-      return;
-    }
-
-    // Fall back to normal Reddit-ish topic navigation
-    navigateToTopic(topic, topic.lastUnreadUrl);
   }
 
   @action
   share(event) {
     event.stopPropagation();
-
     this.modal.show(ShareTopicModal, {
       model: { topic: this.args.outletArgs.topic },
     });
   }
 
-    this.likeLoading = true;
-
-    try {
-      await this.loadLikeState();
-
-      if (this.topicLiked) {
-        await ajax(`/post_actions/${this.firstPostId}.json`, {
-          type: "DELETE",
-          data: {
-            post_action_type_id: 2,
-          },
-        });
-
-        this.topicLiked = false;
-        this.localLikeCount = Math.max(
-          0,
-          this.displayedLikeCount - 1
-        );
-      } else {
-        await ajax("/post_actions.json", {
-          type: "POST",
-          data: {
-            id: this.firstPostId,
-            post_action_type_id: 2,
-          },
-        });
-
-        this.topicLiked = true;
-        this.localLikeCount = this.displayedLikeCount + 1;
-      }
-    } catch (error) {
-      this.likeStateLoaded = false;
-
-      // eslint-disable-next-line no-console
-      console.error("Unable to toggle topic like", error);
-    } finally {
-      this.likeLoading = false;
-    }
-  }
-
   <template>
     {{! template-lint-disable no-invalid-interactive }}
-
-    <div
-      {{on "click" this.openTopic}}
-      class="custom-topic-layout"
-    >
+    <div {{on "click" this.openTopic}} class="custom-topic-layout">
       <div class="custom-topic-layout_meta">
         {{#unless @outletArgs.hideCategory}}
           {{#unless @outletArgs.topic.isPinnedUncategorized}}
@@ -145,9 +75,7 @@ export default class Item extends Component {
               @name="topic-list-before-category"
               @outletArgs={{lazyHash topic=@outletArgs.topic}}
             />
-
             {{categoryLink @outletArgs.topic.category}}
-
             <span class="bullet-separator">&bull;</span>
           {{/unless}}
         {{/unless}}
@@ -158,17 +86,9 @@ export default class Item extends Component {
           </span>
 
           <a
-            data-user-card={{get
-              @outletArgs
-              "topic.posters.0.user.username"
-            }}
-            href="/u/{{get
-              @outletArgs
-              'topic.posters.0.user.username'
-            }}"
-          >
-            @{{get @outletArgs "topic.posters.0.user.username"}}
-          </a>
+            data-user-card={{get @outletArgs "topic.posters.0.user.username"}}
+            href="/u/{{get @outletArgs 'topic.posters.0.user.username'}}"
+          >@{{get @outletArgs "topic.posters.0.user.username"}}</a>
 
           {{formatDate
             @outletArgs.topic.createdAt
@@ -218,10 +138,6 @@ export default class Item extends Component {
         }}
       </div>
 
-      <div class="custom-topic-layout_excerpt">
-        <TopicExcerpt @topic={{@outletArgs.topic}} />
-      </div>
-
       {{#if @outletArgs.topic.thumbnails}}
         <div class="custom-topic-layout_image">
           <img
@@ -231,6 +147,12 @@ export default class Item extends Component {
           />
         </div>
       {{/if}}
+
+      {{#unless @outletArgs.topic.thumbnails}}
+        <div class="custom-topic-layout_excerpt">
+          <TopicExcerpt @topic={{@outletArgs.topic}} />
+        </div>
+      {{/unless}}
 
       <div class="custom-topic-layout_bottom-bar">
         {{#if settings.show_like_count}}
@@ -248,7 +170,6 @@ export default class Item extends Component {
         </span>
 
         {{! template-lint-disable no-invalid-interactive }}
-
         <span {{on "click" this.share}} class="share-toggle">
           {{icon "link"}}
           {{i18n "post.quote_share"}}
