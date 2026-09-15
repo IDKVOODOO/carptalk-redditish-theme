@@ -75,7 +75,9 @@ export default class Item extends Component {
               @name="topic-list-before-category"
               @outletArgs={{lazyHash topic=@outletArgs.topic}}
             />
+
             {{categoryLink @outletArgs.topic.category}}
+
             <span class="bullet-separator">&bull;</span>
           {{/unless}}
         {{/unless}}
@@ -88,7 +90,9 @@ export default class Item extends Component {
           <a
             data-user-card={{get @outletArgs "topic.posters.0.user.username"}}
             href="/u/{{get @outletArgs 'topic.posters.0.user.username'}}"
-          >@{{get @outletArgs "topic.posters.0.user.username"}}</a>
+          >
+            @{{get @outletArgs "topic.posters.0.user.username"}}
+          </a>
 
           {{formatDate
             @outletArgs.topic.createdAt
@@ -138,6 +142,10 @@ export default class Item extends Component {
         }}
       </div>
 
+      <div class="custom-topic-layout_excerpt">
+        <TopicExcerpt @topic={{@outletArgs.topic}} />
+      </div>
+
       {{#if @outletArgs.topic.thumbnails}}
         <div class="custom-topic-layout_image">
           <img
@@ -147,12 +155,6 @@ export default class Item extends Component {
           />
         </div>
       {{/if}}
-
-      {{#unless @outletArgs.topic.thumbnails}}
-        <div class="custom-topic-layout_excerpt">
-          <TopicExcerpt @topic={{@outletArgs.topic}} />
-        </div>
-      {{/unless}}
 
       <div class="custom-topic-layout_bottom-bar">
         {{#if settings.show_like_count}}
