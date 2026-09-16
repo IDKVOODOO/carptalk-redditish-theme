@@ -18,6 +18,7 @@ import lazyHash from "discourse/helpers/lazy-hash";
 import topicFeaturedLink from "discourse/helpers/topic-featured-link";
 import { wantsNewWindow } from "discourse/lib/intercept-click";
 import { i18n } from "discourse-i18n";
+import ratingList from "discourse/plugins/discourse-ratings/discourse/helpers/rating-list";
 
 export default class Item extends Component {
   @service currentUser;
@@ -100,6 +101,15 @@ export default class Item extends Component {
             noTitle="true"
             leaveAgo="true"
           }}
+{{#if @outletArgs.topic.show_ratings}}
+  <span class="card-ratings-inline">
+    {{ratingList
+      @outletArgs.topic.ratings
+      topic=@outletArgs.topic
+      linkTo=true
+    }}
+  </span>
+{{/if}}
         </span>
       </div>
 
